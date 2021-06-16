@@ -76,6 +76,7 @@ class GrupButoane:
 
 
 def deseneaza_alegeri(display, tabla_curenta):
+    #c1 - alegeri inceput joc
     btn_alg=GrupButoane(
         top=30,
         left=30,
@@ -101,7 +102,7 @@ def deseneaza_alegeri(display, tabla_curenta):
             Buton(display=display, w=45, h=30, text="zero", valoare="0")
             ],
         indiceSelectat=0)
-
+    #c2 - nivelul de dificultate
     btn_dif=GrupButoane(
         top=240,
         left=30,
@@ -150,7 +151,7 @@ class Celula:
         self.zid = [None, None, None, None]
         # zidurile vor fi pe pozitiile 0-sus, 1-dreapta, 2-jos, 3-stanga
         self.cod = 0
-        # if lin > 0:
+        #pentru fiecare celula se marcheaza cele 4 ziduri ale sale
         self.zid[0] = pygame.Rect(left, top - 1 - self.__class__.grosimeZid // 2, w, self.__class__.grosimeZid)
         self.zid[1] = pygame.Rect(left + w - self.__class__.grosimeZid // 2, top, self.__class__.grosimeZid, h)
         self.zid[2] = pygame.Rect(left, top + h - self.__class__.grosimeZid // 2, w, self.__class__.grosimeZid)
@@ -160,6 +161,8 @@ class Celula:
     # 0001 zid doar sus
     # 0011 zid sus si dreapta etc
     def deseneaza(self):
+        #desenarea celor 4 colturi ale celulei cu un cerc
+        #c4 - desenare cercuri
         pygame.draw.circle(Interfata.ecr, self.__class__.culoareLinii, self.dreptunghi.topleft, 8)
         pygame.draw.circle(Interfata.ecr, self.__class__.culoareLinii, self.dreptunghi.topright, 8)
         pygame.draw.circle(Interfata.ecr, self.__class__.culoareLinii, self.dreptunghi.bottomleft, 8)
@@ -187,10 +190,8 @@ class Interfata:
     def __init__(self, matr, nrPlayer, nrComputer, nrLinii=7, nrColoane=10, ziduri_gasite=[]):
         self.nrLinii = nrLinii
         self.nrColoane = nrColoane
-        # self.ecran = ecran
         self.nrPlayer = nrPlayer
         self.nrComputer = nrComputer
-        # self.lista_player = copy.deepcopy(lis)
         if matr is None:
             self.matrCelule = [[Celula(left=col * (self.__class__.dimCelula + 1),
                                    top=lin * (self.__class__.dimCelula + 1), w=self.__class__.dimCelula,
@@ -200,6 +201,7 @@ class Interfata:
             self.matrCelule = matr
         self.ziduri_gasite = ziduri_gasite
 
+        #incarcarea si prelucrarea imaginilor pt jucatorul cu x si cel cu 0
         poza_x = pygame.image.load('poza_x.png')
         poza_0 = pygame.image.load('poza_0.png')
         poza_x_win = pygame.image.load('poza_x_win.png')
@@ -211,10 +213,12 @@ class Interfata:
 
     @classmethod
     def jucator_opus(cls, jucator):
-        # val_true if conditie else val_false
         return cls.JMAX if jucator == cls.JMIN else cls.JMIN
 
     def final(self):
+        #verifica daca mai exista mutari posibile prin calcularea scorului total posibil
+        #de asemenea, determina si castigatorul jocului
+        #c7 - testare stare finala
         nrCelule = (self.nrLinii-1) * (self.nrColoane-1)
         if nrCelule == self.nrPlayer + self.nrComputer:
             if self.nrPlayer == self.nrComputer:
@@ -226,6 +230,10 @@ class Interfata:
         return False
 
     def mutari(self, jucator):
+        #se vor genera toate zidurile posibile si se vor pastra numai zidurile in care se poate muta
+        #daca se inchide o celula va fi modificat scorul jucatorului curent si i se pastreaza dreptul de a muta
+        #pentru zidurile generate se verifica si daca acestea sunt ziduri pentru alte celule
+        #c5 - functia de generare a mutarilor
         l_mutari = []
         juc_opus = self.jucator_opus(jucator)
         for il, linie in enumerate(self.matrCelule):
@@ -295,9 +303,10 @@ class Interfata:
         return l_mutari
 
     def estimeaza_scor(self, adancime,tip_estimat="estimare_1"):
+        #c8 - estimare scor
         t_final = self.final()
 
-        # daca starea e finala, in functie de cine a castigat, returneaza un nr ft mare
+        # daca starea e finala, in functie de cine a castigat, returneaza un nr mare
         if t_final == self.__class__.JMAX:
             return (999 + adancime)
         elif t_final == self.__class__.JMIN:
@@ -305,21 +314,29 @@ class Interfata:
         elif t_final == 'remiza':
             return 0
         else:
+            #estimare 1: returneaza diferenta dintre scor calculator si scor jucator, iar cu cat e mai mare, starea e mai buna pt calculator
             if tip_estimat == "estimare_1":
-                # Estimarea 1: Nr patratele capturate calculator - nr patratele calculate player = > cu cat nr e mai mare cu atat starea e mai buna pentru MAX
                 return self.nrComputer - self.nrPlayer
 
-    def deseneazaImag(self, imag, cel):
-        Interfata.ecr.blit(imag, (
-        cel.dreptunghi.left + self.__class__.paddingCelula, cel.dreptunghi.top + self.__class__.paddingCelula))
+            #estimare 2: returneaza diferenta de la estimare 1 + nr de celule cu 3 ziduri
+            #in plus fata de celulele capturate, va calcula si celulele pe care urmeaza sa le inchida
+            if tip_estimat == 'estimare_2':
+
+                nr_cel = 0
+                for lin in self.matrCelule:
+                    for cel in lin:
+                        if cel.cod in [14, 13, 11, 7]:
+                            nr_cel += 1
+                return self.nrComputer - self.nrPlayer + nr_cel
+
 
     def deseneazaEcranJoc(self, scor_jucator, scor_computer):
+        #c4 - desenarea tablei de joc
         self.ecr.fill(self.__class__.culoareEcran)
         for linie in self.matrCelule:
             for cel in linie:
                 cel.deseneaza()
-                # imag = self.poza_x if cel.cod != 15 else self.poza_0
-                # self.deseneazaImag(imag, cel)
+
         pygame.display.update()
 
 class Stare:
@@ -351,22 +368,20 @@ class Stare:
         return l_stari_mutari
 
 
-def min_max(stare):
+def min_max(stare, tip_estimat):
     global cnt
     if stare.adancime == 0 or stare.tabla_joc.final():
-        stare.estimare = stare.tabla_joc.estimeaza_scor(stare.adancime)
+        stare.estimare = stare.tabla_joc.estimeaza_scor(stare.adancime, tip_estimat)
         return stare
 
     # calculez toate mutarile posibile din starea curenta
     stare.mutari_posibile = stare.mutari()
 
     # aplic algoritmul minimax pe toate mutarile posibile (calculand astfel subarborii lor)
-    mutariCuEstimare = [min_max(mutare) for mutare in stare.mutari_posibile]
-
+    mutariCuEstimare = [min_max(mutare, tip_estimat) for mutare in stare.mutari_posibile]
+    # c9c nr noduri
     cnt += len(mutariCuEstimare)
-    # print("MCE")
-    # print(len(mutariCuEstimare))
-    # print()
+
     if stare.j_curent == Interfata.JMAX:
         # daca jucatorul e JMAX aleg starea-fiica cu estimarea maxima
         stare.stare_aleasa = max(mutariCuEstimare, key=lambda x: x.estimare)
@@ -377,23 +392,25 @@ def min_max(stare):
     return stare
 
 
-def alpha_beta(alpha, beta, stare):
+def alpha_beta(alpha, beta, stare, tip_estimat):
     global cnt
     if stare.adancime == 0 or stare.tabla_joc.final():
-        stare.estimare = stare.tabla_joc.estimeaza_scor(stare.adancime)
+        stare.estimare = stare.tabla_joc.estimeaza_scor(stare.adancime, tip_estimat)
         return stare
 
     if alpha > beta:
         return stare  # este intr-un interval invalid deci nu o mai procesez
 
     stare.mutari_posibile = stare.mutari()
+    #c9c nr noduri
     cnt += len(stare.mutari_posibile)
     if stare.j_curent == Interfata.JMAX:
         estimare_curenta = float('-inf')
-
+        #c12 - ordonare succesori
+        stare.mutari_posibile = sorted(stare.mutari_posibile, key=lambda x: x.tabla_joc.estimeaza_scor(stare.adancime), reverse=True)
         for mutare in stare.mutari_posibile:
             # calculeaza estimarea pentru starea noua, realizand subarborele
-            stare_noua = alpha_beta(alpha, beta, mutare)
+            stare_noua = alpha_beta(alpha, beta, mutare, tip_estimat)
 
             if (estimare_curenta < stare_noua.estimare):
                 stare.stare_aleasa = stare_noua
@@ -405,10 +422,10 @@ def alpha_beta(alpha, beta, stare):
 
     elif stare.j_curent == Interfata.JMIN:
         estimare_curenta = float('inf')
-
+        stare.mutari_posibile = sorted(stare.mutari_posibile, key=lambda x: x.tabla_joc.estimeaza_scor(stare.adancime))
         for mutare in stare.mutari_posibile:
 
-            stare_noua = alpha_beta(alpha, beta, mutare)
+            stare_noua = alpha_beta(alpha, beta, mutare, tip_estimat)
 
             if (estimare_curenta > stare_noua.estimare):
                 stare.stare_aleasa = stare_noua
@@ -424,6 +441,7 @@ def alpha_beta(alpha, beta, stare):
 
 
 pygame.init()
+#c4 - titlu fereastra
 pygame.display.set_caption("Hernest Mihai - Dots and Boxes")
 
 interf = Interfata(None, 0, 0, nrLinii=4, nrColoane=4)
@@ -435,7 +453,6 @@ else:
     Interfata.JMAX = 'x'
 # Interfata.ecr.blit(text, textRect)
 interf.deseneazaEcranJoc(0, 0)
-# bucla jocului care imi permite sa tot fac mutari
 font = pygame.font.Font('freesansbold.ttf', 20)
 text_jucator = font.render('Scor jucator: 0', True, (255, 255, 255), (0, 0, 0))
 text_computer = font.render('Scor computer: 0', True, (255, 255, 255), (0, 0, 0))
@@ -449,6 +466,7 @@ textRect4.center = (150, 150)
 
 jucator = True
 ultima_mutare = [None, None, None, None]
+#c3 - generare stare initiala
 stare_curenta = Stare(interf, 'x', dificultate)
 text_mutare = font.render('Este randul jucatorului: x', True, (255, 255, 255), (0, 0, 0))
 textRect3 = text_mutare.get_rect()
@@ -460,6 +478,7 @@ scor_comp = 0
 celule_jucator = []
 celule_calculator = []
 timp_asteptare_calc = []
+matr_debug = [ [ 0 for i in range(4) ] for j in range(4) ]
 ok_juc = False
 
 timp_start_joc = t_inainte = int(round(time.time() * 1000))
@@ -477,11 +496,13 @@ while True:
 
     if stare_curenta.tabla_joc.final():
         timp_final_joc = int(round(time.time() * 1000))
+        #c9d afisare timp final si nr mutari
         print("Jocul a durat: " + str(timp_final_joc-timp_start_joc) + " milisecunde")
         print("Numar mutari jucator: " + str(nr_mutari_juc))
         print("Numar mutari calculator: " + str(nr_mutari_calc))
         pygame.draw.rect(Interfata.ecr, Celula.culoareLinii, ultima_mutare)
         semn_castigator = stare_curenta.tabla_joc.final()
+        #c7 - colorare configuratie castigatoare
         if semn_castigator == 'x':
             poza = stare_curenta.tabla_joc.poza_x_win
             if stare_curenta.tabla_joc.nrPlayer > stare_curenta.tabla_joc.nrComputer:
@@ -510,6 +531,7 @@ while True:
         pygame.display.update()
         time.sleep(3)
         Interfata.ecr.fill((255, 255, 255))
+        #c1 - afisare castigator
         if stare_curenta.tabla_joc.nrPlayer > stare_curenta.tabla_joc.nrComputer:
             text_final = font.render('Castigator: player', True, (255, 255, 255), (0, 0, 0))
             Interfata.ecr.blit(text_final, textRect4)
@@ -522,10 +544,12 @@ while True:
         pygame.display.update()
         time.sleep(2)
         pygame.quit()
+        #c9a - min, max, mediu, mediana calculator
         print("Timpul minim de asteptare calculator: " + str(min(timp_asteptare_calc)))
         print("Timpul maxim de asteptare calculator: " + str(max(timp_asteptare_calc)))
         print("Timpul mediu de asteptare calculator: " + str(sum(timp_asteptare_calc) / len(timp_asteptare_calc)))
         print("Mediana timp: " + str(statistics.median(timp_asteptare_calc)))
+        #c9c final nr noduri
         print("Nr minim noduri: " + str(min(noduri_generate)))
         print("Nr maxim noduri: " + str(max(noduri_generate)))
         print("Nr mediu noduri: " + str(sum(noduri_generate) / len(noduri_generate)))
@@ -560,6 +584,7 @@ while True:
                     stare_curenta.tabla_joc.deseneazaEcranJoc(scor_juc, scor_comp)
             # daca utilizatorul a facut click
             elif ev.type == pygame.MOUSEBUTTONDOWN:
+                #c6 - click jucator
                 pos = pygame.mouse.get_pos()
                 zidGasit = []
                 for il, linie in enumerate(stare_curenta.tabla_joc.matrCelule):
@@ -581,6 +606,7 @@ while True:
                         culoare = Celula.culoare0
                     for (cel, iz, zid) in zidGasit:
                         if ultima_mutare != [None, None, None, None]:
+                            #deseneaza cu negru ultima mutare la urmatoarea mutare
                             pygame.draw.rect(Interfata.ecr, Celula.culoareLinii, ultima_mutare)
                         pygame.draw.rect(Interfata.ecr, culoare, zid)
                         ultima_mutare = zid
@@ -591,10 +617,12 @@ while True:
 
                     if not ok:
                         stare_curenta.j_curent = Interfata.JMAX
+                        #c1 - afisarea a cui este randul jucator
                         text_mutare = font.render('Muta: ' + stare_curenta.j_curent, True, (255, 255, 255), (0, 0, 0))
                         # print(Interfata.JMIN)
                         Interfata.ecr.blit(text_mutare, textRect3)
                     print("\nMatrice interfata: JUCATOR")
+                    #c4 - afisare tabla
                     for l in stare_curenta.tabla_joc.matrCelule:
                         for c in l:
                             print(c.cod, end=" ")
@@ -603,6 +631,7 @@ while True:
                     if celA.cod == 15 and Celula.afisImagini:
                         celule_jucator.append(celA)
                         scor_juc += 1
+                        #c9b scor jucator
                         text_jucator = font.render('Scor jucator: ' + str(scor_juc), True, (255, 255, 255), (0, 0, 0))
                         Interfata.ecr.blit(text_jucator, textRect1)
                         poza = stare_curenta.tabla_joc.poza_x if Interfata.JMIN == 'x' else stare_curenta.tabla_joc.poza_0
@@ -615,8 +644,10 @@ while True:
                 pygame.display.update()
     else:
         if stare_curenta.j_curent == Interfata.JMAX:
+            nr_mutari_calc += 1
             print("Scor:  Jucator " + str(stare_curenta.tabla_joc.nrPlayer) + " - Calculator: " + str(
                 stare_curenta.tabla_joc.nrComputer))
+            #c9a - incepe timer
             t_inainte = int(round(time.time() * 1000))
             text_mutare = font.render('Muta: ' + Interfata.JMAX, True, (255, 255, 255), (0, 0, 0))
             Interfata.ecr.blit(text_mutare, textRect3)
@@ -625,6 +656,7 @@ while True:
                 # daca utilizatorul face click pe x-ul de inchidere a ferestrei
                 if ev.type == pygame.QUIT:
                     pygame.quit()
+                    #c10 - jucatorul opreste jocul cand vrea
                     timp_final_joc = int(round(time.time() * 1000))
                     print("Jocul a durat: " + str(timp_final_joc - timp_start_joc) + " milisecunde")
                     print("Numar mutari jucator: " + str(nr_mutari_juc))
@@ -640,15 +672,20 @@ while True:
                         interf.deseneazaEcranJoc(scor_juc, scor_comp)
             cnt = 0
             if tip_algoritm == 'minimax':
-                stare_actualizata = min_max(stare_curenta)
+                stare_actualizata = min_max(stare_curenta, estimare)
             else:
-                stare_actualizata = alpha_beta(-1000, 1000, stare_curenta)
+                stare_actualizata = alpha_beta(-1000, 1000, stare_curenta, estimare)
 
+            #c9a sfarsit timer
             t_dupa = int(round(time.time() * 1000))
+
             print("Calculatorul a gandit timp de " + str(t_dupa - t_inainte) + " milisecunde.")
+            #c9a lista timp asteptare calculator
             timp_asteptare_calc.append(t_dupa - t_inainte)
+            #c9c nr noduri generate
             print("Noduri generate: " + str(cnt))
             noduri_generate.append(cnt)
+            #c9b - estimare
             print("Estimare: " + str(stare_actualizata.estimare))
             zid_initial = []
             acelasi_juc = False
@@ -657,6 +694,7 @@ while True:
                     if stare_actualizata.stare_aleasa.tabla_joc.matrCelule[il][ic].cod != stare_curenta.tabla_joc.matrCelule[il][ic].cod:
                         dif = stare_actualizata.stare_aleasa.tabla_joc.matrCelule[il][ic].cod - stare_curenta.tabla_joc.matrCelule[il][ic].cod
                         if stare_actualizata.stare_aleasa.tabla_joc.matrCelule[il][ic].cod == 15:
+                            #c9b scor computer
                             text_computer = font.render('Scor computer: ' + str(scor_comp), True, (255, 255, 255),
                                                         (0, 0, 0))
                             Interfata.ecr.blit(text_computer, textRect2)
@@ -673,9 +711,8 @@ while True:
                                 if ultima_mutare != [None, None, None, None]:
                                     pygame.draw.rect(Interfata.ecr, Celula.culoareLinii, ultima_mutare)
                                 pygame.draw.rect(Interfata.ecr, (200, 200, 200), zid)
-                                nr_mutari_calc += 1
                                 ultima_mutare = zid
-                                stare_curenta.tabla_joc.ziduri_gasite.append((il, ic, iz))
+                                stare_actualizata.stare_aleasa.tabla_joc.ziduri_gasite.append((il, ic, iz))
 
             stare_curenta.tabla_joc = stare_actualizata.stare_aleasa.tabla_joc
             print("\nMatrice interfata: COMPUTER")
@@ -685,6 +722,7 @@ while True:
                 print()
             if not acelasi_juc:
                 stare_curenta.j_curent = Interfata.JMIN
+                # c1 - afisarea a cui este randul calculator
                 text_mutare = font.render('Muta: ' + stare_curenta.j_curent, True, (255, 255, 255), (0, 0, 0))
                 Interfata.ecr.blit(text_mutare, textRect3)
 
